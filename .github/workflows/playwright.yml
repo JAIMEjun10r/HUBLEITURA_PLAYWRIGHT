@@ -20,32 +20,7 @@ jobs:
         id: matrix
         shell: bash
         run: |
-          cat <<'JSON' >> "$GITHUB_OUTPUT"
-          matrix={
-            "include": [
-              {
-                "grupo": "auth",
-                "specs": "tests/auth.spec.ts"
-              },
-              {
-                "grupo": "catálogo",
-                "specs": "tests/catalog.spec.ts"
-              },
-              {
-                "grupo": "cesta",
-                "specs": "tests/basket.spec.ts"
-              },
-              {
-                "grupo": "reservas",
-                "specs": "tests/reservation.spec.ts"
-              },
-              {
-                "grupo": "admin",
-                "specs": "tests/admin.spec.ts tests/admin-permissions.spec.ts"
-              }
-            ]
-          }
-          JSON
+          echo 'matrix={"include":[{"grupo":"auth","specs":"tests/auth.spec.ts"},{"grupo":"catalogo","specs":"tests/catalog.spec.ts"},{"grupo":"cesta","specs":"tests/basket.spec.ts"},{"grupo":"reservas","specs":"tests/reservation.spec.ts"},{"grupo":"admin","specs":"tests/admin.spec.ts tests/admin-permissions.spec.ts"}]}' >> "$GITHUB_OUTPUT"
 
   testes:
     name: Testes Playwright - ${{ matrix.grupo }}
