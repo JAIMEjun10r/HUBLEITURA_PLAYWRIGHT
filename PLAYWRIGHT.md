@@ -69,6 +69,31 @@ Abrir o relatório HTML:
 npx playwright show-report
 ```
 
+## Pipeline no GitHub Actions
+
+A pipeline fica em:
+
+```text
+.github/workflows/playwright.yml
+```
+
+Ela pode ser executada manualmente pelo `workflow_dispatch` e também roda em `push` e `pull_request` para a branch `main`.
+
+A execução usa uma matrix por grupo de testes:
+
+- `auth`
+- `catálogo`
+- `cesta`
+- `reservas`
+- `admin`
+
+Cada job da matrix instala as dependências, instala o Chromium do Playwright e roda apenas o grupo de specs correspondente. Como cada job roda em um ambiente isolado, cada grupo sobe sua própria aplicação e usa sua própria cópia temporária do banco SQLite.
+
+Em caso de falha, a pipeline publica os artefatos de teste em:
+
+- `playwright-report-*`
+- `test-results-*`
+
 ## Inicialização da aplicação
 
 Não é necessário executar `npm start` antes dos testes.

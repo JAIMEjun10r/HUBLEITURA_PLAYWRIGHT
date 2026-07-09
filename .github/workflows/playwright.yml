@@ -1,0 +1,92 @@
+name: Playwright
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  preparar-matriz:
+    name: Preparar matriz de testes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Definir grupos de testes
+        id: matrix
+        shell: bash
+        run: |
+          cat <<'JSON' >> "$GITHUB_OUTPUT"
+          matrix={
+            "include": [
+              {
+                "grupo": "auth",
+                "specs": "tests/auth.spec.ts"
+              },
+              {
+                "grupo": "catálogo",
+                "specs": "tests/catalog.spec.ts"
+              },
+              {
+                "grupo": "cesta",
+                "specs": "tests/basket.spec.ts"
+              },
+              {
+                "grupo": "reservas",
+                "specs": "tests/reservation.spec.ts"
+              },
+              {
+                "grupo": "admin",
+                "specs": "tests/admin.spec.ts tests/admin-permissions.spec.ts"
+              }
+            ]
+          }
+          JSON
+
+  testes:
+    name: Testes Playwright - ${{ matrix.grupo }}
+    needs: preparar-matriz
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.preparar-matriz.outputs.matrix) }}
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar navegador do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Rodar testes do grupo ${{ matrix.grupo }}
+        run: npx playwright test ${{ matrix.specs }} --project=chromium
+
+      - name: Publicar relatório HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.grupo }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Publicar evidências de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.grupo }}
+          path: test-results/
+          retention-days: 7
