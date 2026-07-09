@@ -144,6 +144,12 @@ curl -X GET http://localhost:3000/api/books \
 2. Configure o token JWT no cabeçalho Authorization
 3. Teste todos os endpoints disponíveis
 
+## Automação E2E com Playwright
+
+Este fork inclui uma suíte de automação E2E com **Playwright + TypeScript**, usando Page Object Model, fixtures tipadas, massa de dados e autenticação com `storageState`.
+
+Para entender a estrutura e executar os testes, consulte o guia dedicado: [PLAYWRIGHT.md](PLAYWRIGHT.md).
+
 ## 🤝 Contribuindo
 
 ### Para Instrutores
