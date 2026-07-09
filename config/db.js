@@ -2,7 +2,9 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 // Caminho para o banco de dados EXISTENTE
-const dbPath = path.join(__dirname, '..', 'database', 'biblioteca.db');
+const dbPath = process.env.HUB_DB_PATH
+  ? path.resolve(process.env.HUB_DB_PATH)
+  : path.join(__dirname, '..', 'database', 'biblioteca.db');
 
 console.log(`🔍 Procurando banco em: ${dbPath}`);
 

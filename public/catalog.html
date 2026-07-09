@@ -864,6 +864,10 @@
                 showAlert(message, 'alert-danger');
             }
 
+            function showWarning(message) {
+                showAlert(message, 'alert-warning');
+            }
+
             function showAlert(message, type) {
                 const alertContainer = document.getElementById('alert-container');
                 alertContainer.className = `alert ${type}`;
