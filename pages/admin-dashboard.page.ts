@@ -12,11 +12,15 @@ export class AdminDashboardPage {
 
   async dismissEducationalModalIfVisible(): Promise<void> {
     const modalButton = this.page.getByRole("button", { name: /Entendi! Vamos testar/ });
+    const modalAppeared = await modalButton
+      .waitFor({ state: "visible", timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
 
-    if (await modalButton.isVisible()) {
-      await modalButton.click();
-      await expect(modalButton).toBeHidden();
-    }
+    if (modalAppeared) {
+        await modalButton.click();
+        await expect(modalButton).toBeHidden();
+      }
   }
 
   async openReservations(): Promise<void> {

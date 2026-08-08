@@ -1,17 +1,27 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const dashboardReporter: [string, Record<string, unknown>] = [
+  "./reporters/dashboard-reporter.ts",
+  {
+    projectName: "Hub de Leitura",
+    environment: process.env.TEST_ENV ?? (process.env.CI ? "CI" : "Local"),
+  },
+];
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? [["github"], ["html"]] : "html",
+  reporter: process.env.CI
+    ? [["github"], ["html", { open: "never" }], dashboardReporter]
+    : [["list"], ["html", { open: "never" }], dashboardReporter],
   use: {
     baseURL: process.env.BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: "on",
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
   },

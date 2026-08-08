@@ -151,7 +151,6 @@ playwright-report/
 .playwright-cli/
 .auth/
 
-# Local agent instructions and tool state
-AGENTS.md
-agents.MD
+# Local tool state
 .claude/
+.codex/
