@@ -164,17 +164,21 @@ export default class DashboardReporter implements Reporter {
     const status = result ? statusOf(result.status) : "SKIP";
     const steps = result ? collectNamedSteps(result.steps) : [];
     const failingStep = steps.find((step) => step.error);
+    const id = `t${index}`;
 
     const screenshots = (result?.attachments ?? [])
       .filter((a) => a.contentType.startsWith("image/") && a.path)
-      .map((a) => ({ path: this.toRelative(a.path!), title: path.basename(a.path!) }));
+      .map((a, i) => ({
+        path: this.copyEvidence(a.path!, id, `s${i}${path.extname(a.path!)}`),
+        title: path.basename(a.path!),
+      }));
 
     const video = (result?.attachments ?? []).find(
       (a) => a.contentType.startsWith("video/") && a.path,
     );
 
     return {
-      id: `t${index}`,
+      id,
       code,
       label,
       suite: suiteTitleOf(test),
@@ -190,12 +194,24 @@ export default class DashboardReporter implements Reporter {
       errorStack: result?.error?.stack ? stripAnsi(result.error.stack) : undefined,
       lastStepTitle: failingStep?.title,
       screenshots,
-      videoPath: video ? this.toRelative(video.path!) : undefined,
+      videoPath: video ? this.copyEvidence(video.path!, id, `video${path.extname(video.path!)}`) : undefined,
     };
   }
 
-  private toRelative(absolutePath: string): string {
-    return path.relative(this.outputDir, absolutePath).split(path.sep).join("/");
+  // Copia o attachment (nome de arquivo/pasta original do Playwright pode
+  // passar de 60 caracteres, o que estoura o limite de 260 caracteres de
+  // caminho no Windows ao extrair o relatório de um zip baixado da pipeline)
+  // para uma pasta curta e previsível (evidencias/<id>/), e devolve o
+  // caminho relativo a partir daí. REPORT_GROUP (setado na matriz da CI)
+  // prefixa a pasta pra não colidir quando vários grupos são mesclados num
+  // relatório consolidado.
+  private copyEvidence(sourcePath: string, id: string, fileName: string): string {
+    const prefix = process.env.REPORT_GROUP ? `${process.env.REPORT_GROUP}-` : "";
+    const destDir = path.join(this.outputDir, "evidencias", `${prefix}${id}`);
+    fs.mkdirSync(destDir, { recursive: true });
+    const destPath = path.join(destDir, fileName);
+    fs.copyFileSync(sourcePath, destPath);
+    return path.relative(this.outputDir, destPath).split(path.sep).join("/");
   }
 }
 

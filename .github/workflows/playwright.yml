@@ -32,6 +32,7 @@ jobs:
       matrix: ${{ fromJson(needs.preparar-matriz.outputs.matrix) }}
     env:
       TEST_ENV: CI
+      REPORT_GROUP: ${{ matrix.grupo }}
 
     steps:
       - name: Baixar código
@@ -52,6 +53,14 @@ jobs:
       - name: Rodar testes do grupo ${{ matrix.grupo }}
         run: npx playwright test ${{ matrix.specs }} --project=chromium
 
+      - name: Nomear dashboard do grupo ${{ matrix.grupo }}
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "test-results/relatorio_execucao_latest.html" ]; then
+            cp "test-results/relatorio_execucao_latest.html" "test-results/relatorio_execucao_${{ matrix.grupo }}.html"
+          fi
+
       - name: Publicar relatório HTML
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,14 +69,24 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-      - name: Publicar dashboard e evidências do grupo ${{ matrix.grupo }}
+      - name: Publicar dashboard do grupo ${{ matrix.grupo }}
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dashboard-${{ matrix.grupo }}
-          path: test-results/
+          path: |
+            test-results/relatorio_execucao_${{ matrix.grupo }}.html
+            test-results/evidencias/
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Publicar evidências completas em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.grupo }}
+          path: test-results/
+          retention-days: 7
 
   consolidar-relatorio:
     name: Consolidar dashboard de execução
@@ -80,6 +99,7 @@ jobs:
         with:
           pattern: dashboard-*
           path: consolidado
+          merge-multiple: true
           if-no-files-found: warn
 
       - name: Gerar índice do relatório consolidado
@@ -89,10 +109,14 @@ jobs:
             echo '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório Consolidado — Hub de Leitura</title>'
             echo '<style>body{font-family:system-ui,sans-serif;background:#F0F4F9;padding:40px;color:#1A2433}h1{margin-bottom:24px}ul{list-style:none;padding:0}li{margin-bottom:12px}a{display:inline-block;padding:12px 20px;background:#0D1F3C;color:#fff;border-radius:8px;text-decoration:none;font-weight:600}a:hover{background:#1B3A5C}</style></head><body>'
             echo '<h1>Relatório de Execução — Hub de Leitura</h1><ul>'
-            for dir in consolidado/dashboard-*/; do
-              [ -d "$dir" ] || continue
-              grupo=$(basename "$dir" | sed 's/^dashboard-//')
-              echo "<li><a href=\"dashboard-${grupo}/relatorio_execucao_latest.html\">${grupo}</a></li>"
+            for file in consolidado/relatorio_execucao_*.html; do
+              [ -f "$file" ] || continue
+              base=$(basename "$file")
+              case "$base" in
+                *T[0-9]*|relatorio_execucao_latest.html) continue ;;
+              esac
+              grupo=$(basename "$file" .html | sed 's/^relatorio_execucao_//')
+              echo "<li><a href=\"${base}\">${grupo}</a></li>"
             done
             echo '</ul></body></html>'
           } > consolidado/index.html
