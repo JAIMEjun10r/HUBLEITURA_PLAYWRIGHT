@@ -5,9 +5,12 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+
+# Sem gatilho "pull_request": em repositório público, qualquer pessoa pode
+# abrir um fork e mandar PR contra a main, o que disparia a pipeline (e
+# consumiria minutos de Actions) sem precisar de permissão nenhuma no repo.
+# Sem esse gatilho, só quem tem permissão de escrita (push direto ou
+# workflow_dispatch) consegue rodar — ou seja, só o dono/colaboradores.
 
 jobs:
   preparar-matriz:
