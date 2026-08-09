@@ -21,7 +21,10 @@ export default defineConfig({
     baseURL: process.env.BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "on",
+    // "on" gravava vídeo de 100% dos testes, mas só se assiste o dos que
+    // falharam — em suítes grandes isso é a origem de relatórios de ~1 GB.
+    // retain-on-failure grava e descarta no final quando o teste passa.
+    video: { mode: "retain-on-failure", size: { width: 800, height: 450 } },
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
   },

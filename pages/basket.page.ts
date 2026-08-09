@@ -26,7 +26,7 @@ export class BasketPage {
     await this.page.goto("/basket.html");
     await bookResponse;
 
-    await expect(this.page.getByRole("heading", { name: "Sua Cesta de Livros" })).toBeVisible();
+    await expect(this.page.getByRole("heading", { name: "Sua Cesta de Livrosss" })).toBeVisible();
     await expect(this.page.getByRole("heading", { name: title })).toBeVisible();
   }
 
