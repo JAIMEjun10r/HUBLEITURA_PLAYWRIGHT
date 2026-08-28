@@ -2,6 +2,36 @@ name: Playwright
 
 on:
   workflow_dispatch:
+    inputs:
+      grupo:
+        description: Grupo funcional de testes
+        required: true
+        default: todos
+        type: choice
+        options:
+          - todos
+          - auth
+          - catalogo
+          - cesta
+          - reservas
+          - admin
+      navegador:
+        description: Navegador usado pelo Playwright
+        required: true
+        default: chromium
+        type: choice
+        options:
+          - chromium
+      publicar_relatorios:
+        description: Publicar artefatos somente se o repositório for privado
+        required: false
+        default: false
+        type: boolean
+      ambiente:
+        description: Rótulo exposto como TEST_ENV nos relatórios
+        required: true
+        default: CI
+        type: string
   push:
     branches:
       - main
@@ -18,12 +48,27 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+    env:
+      GRUPO_SELECIONADO: ${{ github.event_name == 'workflow_dispatch' && inputs.grupo || 'todos' }}
     steps:
       - name: Definir grupos de testes
         id: matrix
         shell: bash
         run: |
-          echo 'matrix={"include":[{"grupo":"auth","specs":"tests/auth.spec.ts"},{"grupo":"catalogo","specs":"tests/catalog.spec.ts"},{"grupo":"cesta","specs":"tests/basket.spec.ts"},{"grupo":"reservas","specs":"tests/reservation.spec.ts"},{"grupo":"admin","specs":"tests/admin.spec.ts tests/admin-permissions.spec.ts"}]}' >> "$GITHUB_OUTPUT"
+          if [ "$GRUPO_SELECIONADO" = "todos" ]; then
+            matrix='{"include":[{"grupo":"auth","specs":"tests/auth.spec.ts"},{"grupo":"catalogo","specs":"tests/catalog.spec.ts"},{"grupo":"cesta","specs":"tests/basket.spec.ts"},{"grupo":"reservas","specs":"tests/reservation.spec.ts"},{"grupo":"admin","specs":"tests/admin.spec.ts tests/admin-permissions.spec.ts"}]}'
+          else
+            case "$GRUPO_SELECIONADO" in
+              auth) specs="tests/auth.spec.ts" ;;
+              catalogo) specs="tests/catalog.spec.ts" ;;
+              cesta) specs="tests/basket.spec.ts" ;;
+              reservas) specs="tests/reservation.spec.ts" ;;
+              admin) specs="tests/admin.spec.ts tests/admin-permissions.spec.ts" ;;
+              *) echo "Grupo inválido: $GRUPO_SELECIONADO" >&2; exit 1 ;;
+            esac
+            matrix=$(printf '{"include":[{"grupo":"%s","specs":"%s"}]}' "$GRUPO_SELECIONADO" "$specs")
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   testes:
     name: Testes Playwright - ${{ matrix.grupo }}
@@ -34,8 +79,9 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.preparar-matriz.outputs.matrix) }}
     env:
-      TEST_ENV: CI
+      TEST_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.ambiente || 'CI' }}
       REPORT_GROUP: ${{ matrix.grupo }}
+      BROWSER: ${{ github.event_name == 'workflow_dispatch' && inputs.navegador || 'chromium' }}
 
     steps:
       - name: Baixar código
@@ -51,10 +97,10 @@ jobs:
         run: npm ci
 
       - name: Instalar navegador do Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps "$BROWSER"
 
       - name: Rodar testes do grupo ${{ matrix.grupo }}
-        run: npx playwright test ${{ matrix.specs }} --project=chromium
+        run: npx playwright test ${{ matrix.specs }} --project="$BROWSER"
 
       - name: Nomear dashboard do grupo ${{ matrix.grupo }}
         if: always()
@@ -65,7 +111,7 @@ jobs:
           fi
 
       - name: Publicar relatório HTML
-        if: always()
+        if: ${{ always() && github.event.repository.private == true && (github.event_name != 'workflow_dispatch' || inputs.publicar_relatorios) }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ matrix.grupo }}
@@ -73,7 +119,7 @@ jobs:
           retention-days: 7
 
       - name: Publicar dashboard do grupo ${{ matrix.grupo }}
-        if: always()
+        if: ${{ always() && github.event.repository.private == true && (github.event_name != 'workflow_dispatch' || inputs.publicar_relatorios) }}
         uses: actions/upload-artifact@v4
         with:
           name: dashboard-${{ matrix.grupo }}
@@ -84,7 +130,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Publicar evidências completas em caso de falha
-        if: failure()
+        if: ${{ failure() && github.event.repository.private == true && (github.event_name != 'workflow_dispatch' || inputs.publicar_relatorios) }}
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.grupo }}
@@ -94,7 +140,7 @@ jobs:
   consolidar-relatorio:
     name: Consolidar dashboard de execução
     needs: testes
-    if: always()
+    if: ${{ always() && github.event.repository.private == true && (github.event_name != 'workflow_dispatch' || inputs.publicar_relatorios) }}
     runs-on: ubuntu-latest
     steps:
       - name: Baixar dashboards de cada grupo
